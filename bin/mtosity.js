@@ -1,2 +1,2 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 require('../dist/index.js');

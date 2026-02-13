@@ -1,4 +1,3 @@
-import { Command } from "commander";
 import inquirer from "inquirer";
 import chalk from "chalk";
 import figlet from "figlet";
@@ -14,9 +13,8 @@ if (ffmpegPath) {
   ffmpeg.setFfmpegPath(ffmpegPath);
 }
 
-const program = new Command();
-
-const youtubedl = require("youtube-dl-exec");
+const youtubedlPkg = require("youtube-dl-exec");
+const youtubedl = youtubedlPkg.create(process.env.YTDLP_PATH || "yt-dlp");
 
 // --- Commands ---
 
