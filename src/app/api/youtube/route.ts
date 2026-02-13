@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { existsSync, unlinkSync, readFileSync, mkdirSync } from "fs";
-import { join } from "path";
-import { tmpdir } from "os";
-import { randomUUID } from "crypto";
-
-const execAsync = promisify(exec);
+import ytdl from "@distube/ytdl-core";
 
 // --- Rate limiting: 5-second cooldown per IP ---
 const COOLDOWN_MS = 5000;
@@ -31,23 +24,13 @@ function getClientIp(request: NextRequest): string {
 }
 // --- End rate limiting ---
 
+export const maxDuration = 60; // Vercel serverless function timeout (seconds)
+
 interface YouTubeRequestBody {
   url: string;
   format: "video" | "mp3";
   start?: string;
   end?: string;
-}
-
-async function getVideoTitle(url: string): Promise<string> {
-  try {
-    const { stdout } = await execAsync(
-      `yt-dlp --get-title --no-warnings "${url}"`,
-      { timeout: 15000 }
-    );
-    return stdout.trim().replace(/[^a-zA-Z0-9_\-\s]/g, "").substring(0, 80);
-  } catch {
-    return "youtube_download";
-  }
 }
 
 export async function POST(request: NextRequest) {
@@ -65,83 +48,49 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const tmpDir = join(tmpdir(), "mt-terminal-yt");
-  if (!existsSync(tmpDir)) {
-    mkdirSync(tmpDir, { recursive: true });
-  }
-
-  const id = randomUUID().slice(0, 8);
-  let downloadPath = "";
-  let trimmedPath = "";
-
   try {
     const body: YouTubeRequestBody = await request.json();
-    const { url, format, start, end } = body;
+    const { url, format } = body;
 
-    if (!url) {
-      return NextResponse.json({ error: "Missing URL" }, { status: 400 });
-    }
-
-    const title = await getVideoTitle(url);
-    const ext = format === "mp3" ? "mp3" : "mp4";
-    const safeTitle = title.replace(/\s+/g, "_") || "download";
-    downloadPath = join(tmpDir, `${safeTitle}_${id}.${ext}`);
-
-    // Build yt-dlp command
-    let ytCmd: string;
-    if (format === "mp3") {
-      ytCmd = `yt-dlp -x --audio-format mp3 --audio-quality 0 -o "${downloadPath}" --no-warnings --no-playlist "${url}"`;
-    } else {
-      ytCmd = `yt-dlp -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best" --merge-output-format mp4 -o "${downloadPath}" --no-warnings --no-playlist "${url}"`;
-    }
-
-    // Download
-    await execAsync(ytCmd, { timeout: 300000 }); // 5 min timeout
-
-    if (!existsSync(downloadPath)) {
+    if (!url || !ytdl.validateURL(url)) {
       return NextResponse.json(
-        { error: "Download failed — file not found after yt-dlp completed." },
-        { status: 500 }
+        { error: "Missing or invalid YouTube URL" },
+        { status: 400 }
       );
     }
 
-    // Trim with ffmpeg if start/end specified
-    let finalPath = downloadPath;
-    if (start || end) {
-      trimmedPath = join(tmpDir, `${safeTitle}_${id}_trimmed.${ext}`);
-      let ffmpegCmd = `ffmpeg -y -i "${downloadPath}"`;
-      if (start) ffmpegCmd += ` -ss ${start}`;
-      if (end) ffmpegCmd += ` -to ${end}`;
-      if (format === "mp3") {
-        ffmpegCmd += ` -acodec libmp3lame -q:a 0`;
-      } else {
-        ffmpegCmd += ` -c copy`;
-      }
-      ffmpegCmd += ` "${trimmedPath}"`;
+    // Get video info for the title
+    const info = await ytdl.getInfo(url);
+    const title = info.videoDetails.title
+      .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+      .substring(0, 80);
+    const safeTitle = title.replace(/\s+/g, "_") || "download";
 
-      await execAsync(ffmpegCmd, { timeout: 120000 });
+    // Download the stream into memory
+    const ext = format === "mp3" ? "mp3" : "mp4";
+    const chunks: Buffer[] = [];
 
-      if (existsSync(trimmedPath)) {
-        finalPath = trimmedPath;
-      }
-    }
+    const stream =
+      format === "mp3"
+        ? ytdl(url, { filter: "audioonly", quality: "highestaudio" })
+        : ytdl(url, {
+            filter: "audioandvideo",
+            quality: "highest",
+          });
 
-    // Read and return file
-    const fileBuffer = readFileSync(finalPath);
-    const contentType =
-      format === "mp3" ? "audio/mpeg" : "video/mp4";
-    const fileName = `${safeTitle}${start || end ? "_trimmed" : ""}.${ext}`;
+    await new Promise<void>((resolve, reject) => {
+      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
+      stream.on("end", resolve);
+      stream.on("error", reject);
+    });
+
+    const fileBuffer = Buffer.concat(chunks);
 
     // Record successful download time for rate limiting
     lastDownloadByIp.set(clientIp, Date.now());
 
-    // Cleanup
-    try {
-      if (existsSync(downloadPath)) unlinkSync(downloadPath);
-      if (trimmedPath && existsSync(trimmedPath)) unlinkSync(trimmedPath);
-    } catch {
-      // best-effort cleanup
-    }
+    const contentType = format === "mp3" ? "audio/mpeg" : "video/mp4";
+    const fileName = `${safeTitle}.${ext}`;
 
     return new NextResponse(fileBuffer, {
       status: 200,
@@ -153,14 +102,6 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    // Cleanup on error
-    try {
-      if (downloadPath && existsSync(downloadPath)) unlinkSync(downloadPath);
-      if (trimmedPath && existsSync(trimmedPath)) unlinkSync(trimmedPath);
-    } catch {
-      // best-effort
-    }
-
     const message =
       error instanceof Error ? error.message : "Unknown error occurred";
     return NextResponse.json({ error: message }, { status: 500 });

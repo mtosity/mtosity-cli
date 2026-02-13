@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { parseYouTubeCommand } from "@/lib/commands";
+import { trimMedia, parseTime } from "@/lib/ffmpeg";
 
 export interface TerminalLineBase {
   id: string;
@@ -172,7 +173,32 @@ export function useTerminal() {
           }
 
           const blob = await response.blob();
-          const downloadUrl = URL.createObjectURL(blob);
+
+          // Client-side trimming if start/end specified
+          let finalBlob = blob;
+          const { start, end } = parsed.args;
+          if (start || end) {
+            setLines((prev) => {
+              const filtered = prev.filter((l) => l.id !== loadingId);
+              const trimmingLine: TerminalLine = {
+                id: loadingId,
+                type: "loading",
+                content: "Trimming media...",
+                color: "terminal-cyan",
+              };
+              return [...filtered, trimmingLine];
+            });
+
+            const startSec = start ? parseTime(start) : undefined;
+            const endSec = end ? parseTime(end) : undefined;
+            finalBlob = await trimMedia(blob, {
+              start: startSec,
+              end: endSec,
+              format: format === "mp3" ? "mp3" : "mp4",
+            });
+          }
+
+          const downloadUrl = URL.createObjectURL(finalBlob);
           const fileName =
             response.headers.get("X-File-Name") ||
             `download.${format === "mp3" ? "mp3" : "mp4"}`;
