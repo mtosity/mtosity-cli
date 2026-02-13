@@ -28,7 +28,7 @@
   },
   "scripts": {
     "prepublishOnly": "npx tsc",
-    "build": "bun run tsc",
+    "build": "tsc",
     "start": "bun dist/index.js",
     "dev": "bun src/index.ts"
   },
