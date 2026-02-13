@@ -26,7 +26,11 @@ function getClientIp(request: NextRequest): string {
 const PIPED_INSTANCES = [
   "https://pipedapi.kavin.rocks",
   "https://pipedapi.adminforge.de",
-  "https://pipedapi.in.projectsegfau.lt",
+  "https://api.piped.privacy.com.de",
+  "https://pipedapi.ducks.party",
+  "https://pipedapi.drgns.space",
+  "https://pipedapi.smnz.de",
+  "https://api.piped.projectsegfau.lt",
 ];
 
 function extractVideoId(url: string): string | null {
@@ -73,11 +77,18 @@ async function fetchFromPiped(videoId: string): Promise<PipedResponse> {
         throw new Error(`Piped returned ${res.status}`);
       }
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: PipedResponse;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Invalid JSON response: ${text.substring(0, 100)}...`);
+      }
+
       if (!data.audioStreams && !data.videoStreams) {
         throw new Error("No streams found in response");
       }
-      return data as PipedResponse;
+      return data;
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
       continue;
