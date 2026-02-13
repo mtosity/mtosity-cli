@@ -27,8 +27,8 @@
     "url": "https://github.com/mtosity/mt-terminal"
   },
   "scripts": {
-    "prepublishOnly": "npx tsc",
-    "build": "tsc",
+    "prepublishOnly": "tsc",
+    "build": "bun run tsc",
     "start": "bun dist/index.js",
     "dev": "bun src/index.ts"
   },
