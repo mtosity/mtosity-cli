@@ -4,7 +4,7 @@
   "description": "Mtosity CLI - YouTube downloader and system info tool",
   "main": "dist/index.js",
   "bin": {
-    "mtosity": "./bin/mtosity.js"
+    "mtosity": "bin/mtosity.js"
   },
   "files": [
     "dist",
@@ -21,7 +21,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mtosity/mtosity-cli"
+    "url": "git+https://github.com/mtosity/mtosity-cli.git"
   },
   "scripts": {
     "prepublishOnly": "tsc",
