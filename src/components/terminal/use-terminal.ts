@@ -11,21 +11,20 @@ export interface TerminalLine {
 }
 
 const ASCII_BANNER = `
- ██    ██  ██████  ██    ██ ████████ ██    ██ ██████  ███████        
-  ██  ██  ██    ██ ██    ██    ██    ██    ██ ██   ██ ██             
-   ████   ██    ██ ██    ██    ██    ██    ██ ██████  █████          
-    ██    ██    ██ ██    ██    ██    ██    ██ ██   ██ ██             
-    ██     ██████   ██████     ██     ██████  ██████  ███████        
-                                                                     
-  ██████  ██    ██ ███████ ██████  ██    ██                          
- ██    ██ ██    ██ ██      ██   ██  ██  ██                           
- ██    ██ ██    ██ █████   ██████    ████                            
- ██ ▄▄ ██ ██    ██ ██      ██   ██    ██                             
-  ██████   ██████  ███████ ██   ██    ██                             
-      ▀▀                                                             `.trim();
+ ███    ███ ████████  ██████  ███████ ██ ████████ ██    ██
+ ████  ████    ██    ██    ██ ██      ██    ██     ██  ██ 
+ ██ ████ ██    ██    ██    ██ ███████ ██    ██      ████  
+ ██  ██  ██    ██    ██    ██      ██ ██    ██       ██   
+ ██      ██    ██     ██████  ███████ ██    ██       ██   
+                                                         
+ ████████ ███████ ██████  ███    ███ ██ ███    ██  █████  ██      
+    ██    ██      ██   ██ ████  ████ ██ ████   ██ ██   ██ ██      
+    ██    █████   ██████  ██ ████ ██ ██ ██ ██  ██ ███████ ██      
+    ██    ██      ██   ██ ██  ██  ██ ██ ██  ██ ██ ██   ██ ██      
+    ██    ███████ ██   ██ ██      ██ ██ ██   ████ ██   ██ ███████ `.trim();
 
 const NEOFETCH = [
-  { content: "                    user@mt-terminal", color: "terminal-green" },
+  { content: "                    user@mtosity-terminal", color: "terminal-green" },
   { content: "       ▄▄▄▄▄▄▄      ─────────────────", color: "terminal-muted" },
   { content: "      ██     ██      OS: Next.js 15 (App Router)", color: "terminal-text" },
   { content: "     ██  ▀▀  ██      Host: Vercel Edge Runtime", color: "terminal-text" },
@@ -70,7 +69,7 @@ function createLine(
 const WELCOME_LINES: TerminalLine[] = [
   createLine("ascii", ASCII_BANNER, "terminal-green"),
   createLine("system", "", undefined),
-  createLine("system", "  Welcome to mt-terminal v1.0.0", "terminal-cyan"),
+  createLine("system", "  Welcome to MTosity Terminal v1.0.0", "terminal-cyan"),
   createLine("system", "  Type 'help' to see available commands.", "terminal-muted"),
   createLine("system", "", undefined),
 ];

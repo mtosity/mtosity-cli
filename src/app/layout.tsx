@@ -9,7 +9,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Terminal | mt-terminal",
+  title: "MTosity Terminal",
   description: "A terminal-themed website built with Next.js",
 };
 
