@@ -153,29 +153,46 @@ export function useTerminal() {
         setIsProcessing(true);
 
         try {
+          // Step 1: Get stream URL from our API (calls Piped)
           const response = await fetch("/api/youtube", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(parsed.args),
           });
 
+          const data = await response.json();
+
           if (!response.ok) {
-            const errorData = await response.json();
             setLines((prev) => {
               const filtered = prev.filter((l) => l.id !== loadingId);
               return [
                 ...filtered,
-                createLine("error", `  Error: ${errorData.error || "Download failed"}`, "terminal-red"),
+                createLine("error", `  Error: ${data.error || "Download failed"}`, "terminal-red"),
                 createLine("output", "", undefined),
               ];
             });
             return;
           }
 
-          const blob = await response.blob();
+          // Step 2: Download the stream directly from Piped
+          setLines((prev) => {
+            const filtered = prev.filter((l) => l.id !== loadingId);
+            const downloadingLine: TerminalLine = {
+              id: loadingId,
+              type: "loading",
+              content: `Downloading ${format === "mp3" ? "audio" : "video"} stream...`,
+              color: "terminal-cyan",
+            };
+            return [...filtered, downloadingLine];
+          });
 
-          // Client-side trimming if start/end specified
-          let finalBlob = blob;
+          const streamResponse = await fetch(data.streamUrl);
+          if (!streamResponse.ok) {
+            throw new Error("Failed to download stream from source");
+          }
+          let blob = await streamResponse.blob();
+
+          // Step 3: Client-side trimming if start/end specified
           const { start, end } = parsed.args;
           if (start || end) {
             setLines((prev) => {
@@ -191,17 +208,16 @@ export function useTerminal() {
 
             const startSec = start ? parseTime(start) : undefined;
             const endSec = end ? parseTime(end) : undefined;
-            finalBlob = await trimMedia(blob, {
+            blob = await trimMedia(blob, {
               start: startSec,
               end: endSec,
               format: format === "mp3" ? "mp3" : "mp4",
             });
           }
 
-          const downloadUrl = URL.createObjectURL(finalBlob);
-          const fileName =
-            response.headers.get("X-File-Name") ||
-            `download.${format === "mp3" ? "mp3" : "mp4"}`;
+          // Step 4: Create download link
+          const downloadUrl = URL.createObjectURL(blob);
+          const fileName = data.fileName || `download.${format === "mp3" ? "mp3" : "mp4"}`;
 
           setLines((prev) => {
             const filtered = prev.filter((l) => l.id !== loadingId);

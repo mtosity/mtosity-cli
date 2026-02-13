@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import ytdl from "@distube/ytdl-core";
 
 // --- Rate limiting: 5-second cooldown per IP ---
 const COOLDOWN_MS = 5000;
 const lastDownloadByIp = new Map<string, number>();
 
-// Periodically clean up stale entries (every 60s)
 setInterval(() => {
   const now = Date.now();
   for (const [ip, ts] of lastDownloadByIp) {
@@ -24,30 +22,69 @@ function getClientIp(request: NextRequest): string {
 }
 // --- End rate limiting ---
 
-// --- YouTube cookie agent for bot detection bypass ---
-function getYtdlAgent() {
-  const cookiesEnv = process.env.YOUTUBE_COOKIES;
-  if (!cookiesEnv) return undefined;
+// Piped API instances (fallback chain)
+const PIPED_INSTANCES = [
+  "https://pipedapi.kavin.rocks",
+  "https://pipedapi.adminforge.de",
+  "https://pipedapi.in.projectsegfau.lt",
+];
 
-  try {
-    const cookies = JSON.parse(cookiesEnv);
-    return ytdl.createAgent(cookies);
-  } catch (e) {
-    console.error("Failed to parse YOUTUBE_COOKIES:", e);
-    return undefined;
+function extractVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
   }
+  return null;
 }
 
-const ytdlAgent = getYtdlAgent();
-// --- End cookie agent ---
-
-export const maxDuration = 60; // Vercel serverless function timeout (seconds)
-
-interface YouTubeRequestBody {
+interface PipedStream {
   url: string;
-  format: "video" | "mp3";
-  start?: string;
-  end?: string;
+  quality: string;
+  mimeType: string;
+  bitrate: number;
+  codec: string;
+  format: string;
+  videoOnly?: boolean;
+}
+
+interface PipedResponse {
+  title: string;
+  audioStreams: PipedStream[];
+  videoStreams: PipedStream[];
+  duration: number;
+}
+
+async function fetchFromPiped(videoId: string): Promise<PipedResponse> {
+  let lastError: Error | null = null;
+
+  for (const instance of PIPED_INSTANCES) {
+    try {
+      const res = await fetch(`${instance}/streams/${videoId}`, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(10000),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Piped returned ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (!data.audioStreams && !data.videoStreams) {
+        throw new Error("No streams found in response");
+      }
+      return data as PipedResponse;
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      continue;
+    }
+  }
+
+  throw lastError || new Error("All Piped instances failed");
 }
 
 export async function POST(request: NextRequest) {
@@ -66,60 +103,84 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body: YouTubeRequestBody = await request.json();
-    const { url, format } = body;
+    const body = await request.json();
+    const { url, format } = body as { url: string; format: "video" | "mp3" };
 
-    if (!url || !ytdl.validateURL(url)) {
+    if (!url) {
+      return NextResponse.json({ error: "Missing URL" }, { status: 400 });
+    }
+
+    const videoId = extractVideoId(url);
+    if (!videoId) {
       return NextResponse.json(
-        { error: "Missing or invalid YouTube URL" },
+        { error: "Invalid YouTube URL" },
         { status: 400 }
       );
     }
 
-    const agentOpts = ytdlAgent ? { agent: ytdlAgent } : {};
+    // Fetch stream info from Piped
+    const pipedData = await fetchFromPiped(videoId);
 
-    // Get video info for the title
-    const info = await ytdl.getInfo(url, agentOpts);
-    const title = info.videoDetails.title
-      .replace(/[^a-zA-Z0-9_\-\s]/g, "")
-      .substring(0, 80);
-    const safeTitle = title.replace(/\s+/g, "_") || "download";
+    let streamUrl: string;
+    let mimeType: string;
+    const safeTitle =
+      pipedData.title
+        .replace(/[^a-zA-Z0-9_\-\s]/g, "")
+        .replace(/\s+/g, "_")
+        .substring(0, 80) || "download";
 
-    // Download the stream into memory
-    const ext = format === "mp3" ? "mp3" : "mp4";
-    const chunks: Buffer[] = [];
+    if (format === "mp3") {
+      // Pick the highest bitrate audio stream
+      const audioStreams = pipedData.audioStreams
+        .filter((s) => s.mimeType?.startsWith("audio/"))
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-    const stream =
-      format === "mp3"
-        ? ytdl(url, { ...agentOpts, filter: "audioonly", quality: "highestaudio" })
-        : ytdl(url, {
-            ...agentOpts,
-            filter: "audioandvideo",
-            quality: "highest",
-          });
+      if (audioStreams.length === 0) {
+        return NextResponse.json(
+          { error: "No audio streams available for this video." },
+          { status: 404 }
+        );
+      }
 
-    await new Promise<void>((resolve, reject) => {
-      stream.on("data", (chunk: Buffer) => chunks.push(chunk));
-      stream.on("end", resolve);
-      stream.on("error", reject);
-    });
+      streamUrl = audioStreams[0].url;
+      mimeType = audioStreams[0].mimeType;
+    } else {
+      // Pick the best combined (non-videoOnly) stream, or fall back to videoOnly
+      const combinedStreams = pipedData.videoStreams
+        .filter((s) => !s.videoOnly && s.mimeType?.startsWith("video/"))
+        .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-    const fileBuffer = Buffer.concat(chunks);
+      if (combinedStreams.length > 0) {
+        streamUrl = combinedStreams[0].url;
+        mimeType = combinedStreams[0].mimeType;
+      } else {
+        // Fall back to highest bitrate video-only
+        const videoOnly = pipedData.videoStreams
+          .filter((s) => s.mimeType?.startsWith("video/"))
+          .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-    // Record successful download time for rate limiting
+        if (videoOnly.length === 0) {
+          return NextResponse.json(
+            { error: "No video streams available." },
+            { status: 404 }
+          );
+        }
+
+        streamUrl = videoOnly[0].url;
+        mimeType = videoOnly[0].mimeType;
+      }
+    }
+
+    // Record download time for rate limiting
     lastDownloadByIp.set(clientIp, Date.now());
 
-    const contentType = format === "mp3" ? "audio/mpeg" : "video/mp4";
-    const fileName = `${safeTitle}.${ext}`;
-
-    return new NextResponse(fileBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Content-Length": fileBuffer.length.toString(),
-        "X-File-Name": fileName,
-      },
+    // Return stream info — client will download directly from the stream URL
+    return NextResponse.json({
+      streamUrl,
+      mimeType,
+      title: safeTitle,
+      duration: pipedData.duration,
+      fileName: `${safeTitle}.${format === "mp3" ? "mp3" : "mp4"}`,
     });
   } catch (error) {
     const message =
