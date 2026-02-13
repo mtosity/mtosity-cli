@@ -19,7 +19,6 @@ jobs:
           registry-url: https://npm.pkg.github.com
 
       - run: npm install
-      - run: npx tsc
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
