@@ -1,6 +1,6 @@
 # mtosity
 
-An interactive CLI tool for downloading YouTube videos/audio and displaying system info.
+My personal terminal, whatevery I need in one place. You can use it too! You may know something about me while using it.
 
 ```
   __  __   _                   _   _
