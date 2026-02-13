@@ -16,7 +16,8 @@ const os_1 = __importDefault(require("os"));
 if (ffmpeg_static_1.default) {
     fluent_ffmpeg_1.default.setFfmpegPath(ffmpeg_static_1.default);
 }
-const youtubedl = require("youtube-dl-exec");
+const youtubedlPkg = require("youtube-dl-exec");
+const youtubedl = youtubedlPkg.create(process.env.YTDLP_PATH || "yt-dlp");
 // --- Commands ---
 async function runNeofetch() {
     const cpu = await systeminformation_1.default.cpu();
