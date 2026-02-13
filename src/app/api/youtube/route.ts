@@ -24,6 +24,23 @@ function getClientIp(request: NextRequest): string {
 }
 // --- End rate limiting ---
 
+// --- YouTube cookie agent for bot detection bypass ---
+function getYtdlAgent() {
+  const cookiesEnv = process.env.YOUTUBE_COOKIES;
+  if (!cookiesEnv) return undefined;
+
+  try {
+    const cookies = JSON.parse(cookiesEnv);
+    return ytdl.createAgent(cookies);
+  } catch (e) {
+    console.error("Failed to parse YOUTUBE_COOKIES:", e);
+    return undefined;
+  }
+}
+
+const ytdlAgent = getYtdlAgent();
+// --- End cookie agent ---
+
 export const maxDuration = 60; // Vercel serverless function timeout (seconds)
 
 interface YouTubeRequestBody {
@@ -59,8 +76,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const agentOpts = ytdlAgent ? { agent: ytdlAgent } : {};
+
     // Get video info for the title
-    const info = await ytdl.getInfo(url);
+    const info = await ytdl.getInfo(url, agentOpts);
     const title = info.videoDetails.title
       .replace(/[^a-zA-Z0-9_\-\s]/g, "")
       .substring(0, 80);
@@ -72,8 +91,9 @@ export async function POST(request: NextRequest) {
 
     const stream =
       format === "mp3"
-        ? ytdl(url, { filter: "audioonly", quality: "highestaudio" })
+        ? ytdl(url, { ...agentOpts, filter: "audioonly", quality: "highestaudio" })
         : ytdl(url, {
+            ...agentOpts,
             filter: "audioandvideo",
             quality: "highest",
           });
