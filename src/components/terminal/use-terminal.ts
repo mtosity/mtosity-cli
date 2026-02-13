@@ -1,14 +1,23 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { parseYouTubeCommand } from "@/lib/commands";
 
-export interface TerminalLine {
+export interface TerminalLineBase {
   id: string;
-  type: "input" | "output" | "ascii" | "error" | "system";
+  type: "input" | "output" | "ascii" | "error" | "system" | "loading" | "link";
   content: string;
   color?: string;
   delay?: number;
 }
+
+export interface TerminalLinkLine extends TerminalLineBase {
+  type: "link";
+  href: string;
+  fileName: string;
+}
+
+export type TerminalLine = TerminalLineBase | TerminalLinkLine;
 
 const ASCII_BANNER = `
  ███    ███ ████████  ██████  ███████ ██ ████████ ██    ██
@@ -48,13 +57,19 @@ const HELP_TEXT = [
   { content: "  neofetch      System information", color: "terminal-text" },
   { content: "  clear         Clear the terminal", color: "terminal-text" },
   { content: "", color: "terminal-text" },
+  { content: "  YouTube:", color: "terminal-yellow" },
+  { content: "  ─────────────────────────────────────", color: "terminal-muted" },
+  { content: "  yt <url> [start] [end]       Download video", color: "terminal-text" },
+  { content: "  yt-mp3 <url> [start] [end]   Download audio (MP3)", color: "terminal-text" },
+  { content: "  Time format: MM:SS or HH:MM:SS", color: "terminal-muted" },
+  { content: "", color: "terminal-text" },
   { content: "  Tip: Use ↑/↓ arrows to navigate command history", color: "terminal-muted" },
   { content: "", color: "terminal-text" },
 ];
 
 let lineIdCounter = 0;
 function createLine(
-  type: TerminalLine["type"],
+  type: TerminalLineBase["type"],
   content: string,
   color?: string
 ): TerminalLine {
@@ -63,6 +78,21 @@ function createLine(
     type,
     content,
     color,
+  };
+}
+
+function createLinkLine(
+  content: string,
+  href: string,
+  fileName: string
+): TerminalLinkLine {
+  return {
+    id: `line-${lineIdCounter++}`,
+    type: "link",
+    content,
+    color: "terminal-cyan",
+    href,
+    fileName,
   };
 }
 
@@ -78,17 +108,101 @@ export function useTerminal() {
   const [lines, setLines] = useState<TerminalLine[]>(WELCOME_LINES);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isProcessing, setIsProcessing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const executeCommand = useCallback(
-    (input: string) => {
+    async (input: string) => {
       const trimmed = input.trim();
-      const cmd = trimmed.toLowerCase();
+      const parts = trimmed.split(/\s+/);
+      const cmd = parts[0]?.toLowerCase() || "";
+      const args = trimmed.substring(cmd.length).trim();
 
       const newLines: TerminalLine[] = [
         createLine("input", trimmed, "terminal-green"),
       ];
 
+      // Handle YouTube commands asynchronously
+      if (cmd === "yt" || cmd === "yt-mp3") {
+        const format = cmd === "yt-mp3" ? "mp3" : "video";
+        const parsed = parseYouTubeCommand(args, format as "video" | "mp3");
+
+        if (!parsed.success) {
+          newLines.push(createLine("error", `  ${parsed.error}`, "terminal-red"));
+          newLines.push(createLine("output", `  ${parsed.usage}`, "terminal-muted"));
+          newLines.push(createLine("output", "", undefined));
+          setLines((prev) => [...prev, ...newLines]);
+          if (trimmed) setCommandHistory((prev) => [...prev, trimmed]);
+          setHistoryIndex(-1);
+          return;
+        }
+
+        // Show loading state
+        const loadingId = `line-${lineIdCounter++}`;
+        const loadingLine: TerminalLine = {
+          id: loadingId,
+          type: "loading",
+          content: `Downloading ${format === "mp3" ? "audio" : "video"}...`,
+          color: "terminal-cyan",
+        };
+
+        setLines((prev) => [...prev, ...newLines, loadingLine]);
+        if (trimmed) setCommandHistory((prev) => [...prev, trimmed]);
+        setHistoryIndex(-1);
+        setIsProcessing(true);
+
+        try {
+          const response = await fetch("/api/youtube", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(parsed.args),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            setLines((prev) => {
+              const filtered = prev.filter((l) => l.id !== loadingId);
+              return [
+                ...filtered,
+                createLine("error", `  Error: ${errorData.error || "Download failed"}`, "terminal-red"),
+                createLine("output", "", undefined),
+              ];
+            });
+            return;
+          }
+
+          const blob = await response.blob();
+          const downloadUrl = URL.createObjectURL(blob);
+          const fileName =
+            response.headers.get("X-File-Name") ||
+            `download.${format === "mp3" ? "mp3" : "mp4"}`;
+
+          setLines((prev) => {
+            const filtered = prev.filter((l) => l.id !== loadingId);
+            return [
+              ...filtered,
+              createLine("output", "  ✓ Download complete!", "terminal-green"),
+              createLinkLine(`Click to download: ${fileName}`, downloadUrl, fileName),
+              createLine("output", "", undefined),
+            ];
+          });
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : "Network error";
+          setLines((prev) => {
+            const filtered = prev.filter((l) => l.id !== loadingId);
+            return [
+              ...filtered,
+              createLine("error", `  Error: ${msg}`, "terminal-red"),
+              createLine("output", "", undefined),
+            ];
+          });
+        } finally {
+          setIsProcessing(false);
+        }
+        return;
+      }
+
+      // Synchronous commands
       switch (cmd) {
         case "help":
           HELP_TEXT.forEach((line) =>
@@ -168,5 +282,6 @@ export function useTerminal() {
     navigateHistory,
     inputRef,
     focusInput,
+    isProcessing,
   };
 }

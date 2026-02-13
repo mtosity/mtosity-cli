@@ -50,6 +50,35 @@ export function TerminalLine({ line }: { line: TLine }) {
     );
   }
 
+  if (line.type === "loading") {
+    return (
+      <div className="font-mono text-sm leading-relaxed flex items-center gap-2">
+        <span className="inline-flex gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-terminal-cyan animate-bounce [animation-delay:0ms]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-terminal-cyan animate-bounce [animation-delay:150ms]" />
+          <span className="w-1.5 h-1.5 rounded-full bg-terminal-cyan animate-bounce [animation-delay:300ms]" />
+        </span>
+        <span className={colorClass}>{line.content}</span>
+      </div>
+    );
+  }
+
+  if (line.type === "link") {
+    const linkLine = line as import("./use-terminal").TerminalLinkLine;
+    return (
+      <div className="font-mono text-sm leading-relaxed">
+        <span className="text-terminal-muted">  ↳ </span>
+        <a
+          href={linkLine.href}
+          download={linkLine.fileName}
+          className="text-terminal-cyan underline underline-offset-2 hover:text-terminal-green transition-colors cursor-pointer"
+        >
+          📥 {line.content}
+        </a>
+      </div>
+    );
+  }
+
   // Default output
   return (
     <div className="font-mono text-sm leading-relaxed">

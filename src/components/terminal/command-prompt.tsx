@@ -3,15 +3,17 @@
 import { useState, useCallback, type KeyboardEvent, type RefObject } from "react";
 
 interface CommandPromptProps {
-  onSubmit: (command: string) => void;
+  onSubmit: (command: string) => void | Promise<void>;
   onNavigateHistory: (direction: "up" | "down") => string;
   inputRef: RefObject<HTMLInputElement | null>;
+  disabled?: boolean;
 }
 
 export function CommandPrompt({
   onSubmit,
   onNavigateHistory,
   inputRef,
+  disabled = false,
 }: CommandPromptProps) {
   const [input, setInput] = useState("");
 
@@ -48,12 +50,13 @@ export function CommandPrompt({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="terminal-input w-full bg-transparent text-terminal-green caret-terminal-green outline-none border-none p-0 font-mono text-sm"
+          className="terminal-input w-full bg-transparent text-terminal-green caret-terminal-green outline-none border-none p-0 font-mono text-sm disabled:opacity-50"
           autoFocus
           spellCheck={false}
           autoComplete="off"
           autoCapitalize="off"
           aria-label="Terminal input"
+          disabled={disabled}
         />
       </div>
     </div>

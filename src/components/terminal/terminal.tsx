@@ -6,7 +6,7 @@ import { TerminalLine } from "./terminal-line";
 import { CommandPrompt } from "./command-prompt";
 
 export function Terminal() {
-  const { lines, executeCommand, navigateHistory, inputRef, focusInput } =
+  const { lines, executeCommand, navigateHistory, inputRef, focusInput, isProcessing } =
     useTerminal();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,6 +70,7 @@ export function Terminal() {
             onSubmit={executeCommand}
             onNavigateHistory={navigateHistory}
             inputRef={inputRef}
+            disabled={isProcessing}
           />
         </div>
 
