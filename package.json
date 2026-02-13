@@ -1,5 +1,8 @@
 {
-  "name": "mtosity",
+  "name": "@mtosity/mt-terminal",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "version": "1.0.0",
   "description": "Mtosity CLI - YouTube downloader and system info tool",
   "main": "dist/index.js",
