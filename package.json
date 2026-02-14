@@ -1,6 +1,6 @@
 {
   "name": "mtosity",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Mtosity CLI - YouTube downloader and system info tool",
   "main": "dist/index.js",
   "bin": {
