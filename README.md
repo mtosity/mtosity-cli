@@ -25,6 +25,12 @@ npx mtosity
 
 ## Commands
 
+### About
+
+| Command | Description |
+|---|---|
+| `me` | Animated terminal resume / about me |
+
 ### System
 
 | Command | Description |

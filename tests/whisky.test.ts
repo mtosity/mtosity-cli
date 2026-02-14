@@ -1,5 +1,16 @@
-import { describe, expect, test, beforeEach } from "bun:test";
-import { runWhisky } from "../src/commands/whisky";
+import { describe, expect, test, beforeEach, mock, spyOn } from "bun:test";
+import * as childProcess from "child_process";
+
+// Mock execSync so whisky appears installed and brew isn't called
+spyOn(childProcess, "execSync").mockImplementation(((cmd: string) => {
+  const command = String(cmd);
+  if (command.includes("which whisky")) return "/opt/homebrew/bin/whisky\n";
+  if (command.includes("brew install")) throw new Error("should not install in tests");
+  return "";
+}) as typeof childProcess.execSync);
+
+// Import after mocking
+const { runWhisky } = await import("../src/commands/whisky");
 
 describe("whisky", () => {
   let output: string[];
