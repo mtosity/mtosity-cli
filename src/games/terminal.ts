@@ -1,0 +1,68 @@
+import readline from "readline";
+
+export interface GameKey {
+  name: string;
+  ctrl: boolean;
+}
+
+export function parseKey(data: Buffer): GameKey {
+  const s = data.toString();
+
+  if (s === "\x03") return { name: "q", ctrl: true }; // Ctrl+C → quit
+  if (s === "\x1B[A") return { name: "up", ctrl: false };
+  if (s === "\x1B[B") return { name: "down", ctrl: false };
+  if (s === "\x1B[C") return { name: "right", ctrl: false };
+  if (s === "\x1B[D") return { name: "left", ctrl: false };
+  if (s === " ") return { name: "space", ctrl: false };
+  if (s === "\r" || s === "\n") return { name: "enter", ctrl: false };
+
+  return { name: s.toLowerCase(), ctrl: false };
+}
+
+export function hideCursor() {
+  process.stdout.write("\x1B[?25l");
+}
+
+export function showCursor() {
+  process.stdout.write("\x1B[?25h");
+}
+
+export function moveTo(row: number, col: number) {
+  process.stdout.write(`\x1B[${row};${col}H`);
+}
+
+export function clearScreen() {
+  process.stdout.write("\x1B[2J\x1B[1;1H");
+}
+
+export function clearLine(row: number) {
+  moveTo(row, 1);
+  process.stdout.write("\x1B[2K");
+}
+
+export interface GameContext {
+  rl: readline.Interface;
+  cleanup: () => void;
+}
+
+export function enterGame(rl: readline.Interface): GameContext {
+  rl.pause();
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true);
+  }
+  process.stdin.resume();
+  hideCursor();
+  clearScreen();
+
+  const cleanup = () => {
+    showCursor();
+    clearScreen();
+    if (process.stdin.isTTY) {
+      process.stdin.setRawMode(false);
+    }
+    process.stdin.pause();
+    rl.resume();
+  };
+
+  return { rl, cleanup };
+}

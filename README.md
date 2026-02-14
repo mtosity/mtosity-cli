@@ -60,6 +60,21 @@ npx mtosity
 | `yt-mp3 <url> [start] [end]` | Download YouTube audio (MP3) |
 | `harmonica <file> [preset]` | Enhance harmonica recording (presets: echo, echo-light, echo-heavy, bass) |
 
+### Games
+
+| Command | Description |
+|---|---|
+| `game` | List available games |
+| `game tetris` | Bastard Tetris — always gives you the worst piece |
+| `game invaders` | nInvaders — Space Invaders clone in the terminal |
+
+### Utility
+
+| Command | Description |
+|---|---|
+| `clock` | World clock showing times across cities |
+| `clock -p <city>` | Add specific cities to the clock (e.g. `clock -p berlin -p "san francisco"`) |
+
 ### General
 
 | Command | Description |
@@ -104,7 +119,22 @@ src/
 │   ├── spicetify.ts      Spotify/Spicetify management
 │   ├── whisky.ts         Windows app runner via Whisky
 │   ├── youtube.ts        YouTube downloader
-│   └── harmonica.ts      Audio enhancement
+│   ├── harmonica.ts      Audio enhancement
+│   ├── clock.ts          World clock display
+│   └── game.ts           Game launcher (tetris, invaders)
+├── games/
+│   ├── terminal.ts       Shared game infrastructure (raw mode, keys, ANSI)
+│   ├── tetris/
+│   │   ├── index.ts      Tetris game loop & state machine
+│   │   ├── pieces.ts     Tetromino definitions & rotations
+│   │   ├── board.ts      Board state, collision, line clearing
+│   │   ├── bastard.ts    Worst-piece selection algorithm
+│   │   └── renderer.ts   Board + HUD rendering
+│   └── invaders/
+│       ├── index.ts      Invaders game loop & state machine
+│       ├── entities.ts   Types, sprites, colors
+│       ├── wave.ts       Wave creation, speed scaling
+│       └── renderer.ts   Scene rendering
 └── utils/
     ├── ffmpeg.ts          FFmpeg & yt-dlp setup
     └── network.ts         IP address utilities
