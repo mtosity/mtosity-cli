@@ -8,6 +8,8 @@ import { enhanceHarmonica } from "./commands/harmonica";
 import { runSpicetify } from "./commands/spicetify";
 import { runWhisky } from "./commands/whisky";
 import { showResume } from "./commands/me";
+import { showClock, parsePlaces } from "./commands/clock";
+import { runGame } from "./commands/game";
 
 function prompt(rl: readline.Interface): Promise<string> {
   return new Promise((resolve) => {
@@ -98,6 +100,15 @@ export async function main() {
 
       case "me":
         await showResume();
+        break;
+
+      case "clock":
+        const extraPlaces = parsePlaces(args);
+        showClock(extraPlaces);
+        break;
+
+      case "game":
+        await runGame(rl, args[0]);
         break;
 
       case "clear":

@@ -32,6 +32,15 @@ export function showHelp() {
   console.log(dim("      presets: echo (default), echo-light, echo-heavy, bass"));
   console.log("");
 
+  console.log(chalk.white.bold("  Games"));
+  console.log(`    ${cmd("game")} ${arg("<name>")}                 Play a terminal game`);
+  console.log(dim("      games: tetris (Bastard Tetris), invaders (Space Invaders)"));
+  console.log("");
+
+  console.log(chalk.white.bold("  Utility"));
+  console.log(`    ${cmd("clock")} ${dim("[-p <city>]...")}              World clock (use -p to add cities)`);
+  console.log("");
+
   console.log(chalk.white.bold("  General"));
   console.log(`    ${cmd("help")}                        Show this help`);
   console.log(`    ${cmd("clear")}                       Clear the screen`);
