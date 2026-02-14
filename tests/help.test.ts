@@ -20,6 +20,7 @@ describe("help", () => {
   test("shows command categories", () => {
     showHelp();
     const text = output.join("\n");
+    expect(text).toContain("About");
     expect(text).toContain("System");
     expect(text).toContain("Apps");
     expect(text).toContain("Media");
