@@ -7,6 +7,7 @@ import { showHelp } from "./commands/help";
 import { enhanceHarmonica } from "./commands/harmonica";
 import { runSpicetify } from "./commands/spicetify";
 import { runWhisky } from "./commands/whisky";
+import { showResume } from "./commands/me";
 
 function prompt(rl: readline.Interface): Promise<string> {
   return new Promise((resolve) => {
@@ -21,7 +22,7 @@ export async function main() {
   console.log(
     chalk.green(figlet.textSync("MTosity", { horizontalLayout: "full" }))
   );
-  console.log(chalk.dim("Welcome to Mtosity CLI. Type 'help' for commands.\n"));
+  console.log(chalk.dim(`Welcome! Type '${chalk.white("me")}' to learn about me, or '${chalk.white("help")}' for all commands.\n`));
 
   const rl = readline.createInterface({
     input: process.stdin,
@@ -93,6 +94,10 @@ export async function main() {
 
       case "harmonica":
         await enhanceHarmonica(args[0], args[1]);
+        break;
+
+      case "me":
+        await showResume();
         break;
 
       case "clear":

@@ -46,3 +46,4 @@ src/
 - **When adding, removing, or modifying any command:** Always update both `src/commands/help.ts` and `README.md` to reflect the change. Keep help text and README command tables in sync.
 - **No interactive menus:** Do not use `inquirer` prompts. Commands should show usage text when called without required arguments. The REPL uses `readline` for input with arrow-key history support.
 - **New commands** go in `src/commands/<name>.ts` and get wired into `src/cli.ts` switch statement.
+- **Sound effects must support macOS, Windows, and Linux.** Use `afplay` on macOS, PowerShell `SystemSounds`/Media on Windows, and `paplay`/`aplay` (freedesktop sounds) on Linux. Fail silently if unavailable.

@@ -10,6 +10,10 @@ export function showHelp() {
   console.log(dim("  " + "─".repeat(50)));
   console.log("");
 
+  console.log(chalk.white.bold("  About"));
+  console.log(`    ${cmd("me")}                          Animated resume / about me`);
+  console.log("");
+
   console.log(chalk.white.bold("  System"));
   console.log(`    ${cmd("system")}                      Show system info`);
   console.log("");
