@@ -74,6 +74,8 @@ npx mtosity
 |---|---|
 | `clock` | World clock showing times across cities |
 | `clock -p <city>` | Add specific cities to the clock (e.g. `clock -p berlin -p "san francisco"`) |
+| `weather [city]` | Show current weather (via wttr.in) |
+| `weather [city] -d [date]` | Show historical/future weather (via Open-Meteo). Date: `YYYY-MM-DD` or `MM-DD` |
 
 ### General
 
@@ -105,6 +107,15 @@ whisky run ~/Downloads/setup.exe
 
 # Enhance a harmonica recording with heavy echo
 harmonica recording.mp4 echo-heavy
+
+# Check weather (auto-locate)
+weather
+
+# Check weather history (London, Y2K)
+weather London -d 2000-01-01
+
+# Check forecast (Tokyo, Christmas)
+weather Tokyo -d 12-25
 ```
 
 ## Project Structure
@@ -121,6 +132,7 @@ src/
 │   ├── youtube.ts        YouTube downloader
 │   ├── harmonica.ts      Audio enhancement
 │   ├── clock.ts          World clock display
+│   ├── weather.ts        Weather (wttr.in & Open-Meteo)
 │   └── game.ts           Game launcher (tetris, invaders)
 ├── games/
 │   ├── terminal.ts       Shared game infrastructure (raw mode, keys, ANSI)
