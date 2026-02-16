@@ -28,19 +28,19 @@ interface WeatherData {
 
 // WMO Weather interpretation codes (WW)
 const WEATHER_CODES: Record<number, string> = {
-  0: "Clear sky",
-  1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-  45: "Fog", 48: "Depositing rime fog",
-  51: "Drizzle: Light", 53: "Drizzle: Moderate", 55: "Drizzle: Dense",
-  56: "Freezing Drizzle: Light", 57: "Freezing Drizzle: Dense",
-  61: "Rain: Slight", 63: "Rain: Moderate", 65: "Rain: Heavy",
-  66: "Freezing Rain: Light", 67: "Freezing Rain: Heavy",
-  71: "Snow fall: Slight", 73: "Snow fall: Moderate", 75: "Snow fall: Heavy",
-  77: "Snow grains",
-  80: "Rain showers: Slight", 81: "Rain showers: Moderate", 82: "Rain showers: Violent",
-  85: "Snow showers: Slight", 86: "Snow showers: Heavy",
-  95: "Thunderstorm: Slight or moderate",
-  96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail"
+  0: "☀️  Clear sky",
+  1: "🌤️  Mainly clear", 2: "⛅  Partly cloudy", 3: "☁️  Overcast",
+  45: "🌫️  Fog", 48: "🌫️  Depositing rime fog",
+  51: "🌧️  Drizzle: Light", 53: "🌧️  Drizzle: Moderate", 55: "🌧️  Drizzle: Dense",
+  56: "❄️  Freezing Drizzle: Light", 57: "❄️  Freezing Drizzle: Dense",
+  61: "🌧️  Rain: Slight", 63: "🌧️  Rain: Moderate", 65: "🌧️  Rain: Heavy",
+  66: "❄️  Freezing Rain: Light", 67: "❄️  Freezing Rain: Heavy",
+  71: "❄️  Snow fall: Slight", 73: "❄️  Snow fall: Moderate", 75: "❄️  Snow fall: Heavy",
+  77: "❄️  Snow grains",
+  80: "🌦️  Rain showers: Slight", 81: "🌦️  Rain showers: Moderate", 82: "⛈️  Rain showers: Violent",
+  85: "🌨️  Snow showers: Slight", 86: "🌨️  Snow showers: Heavy",
+  95: "⛈️  Thunderstorm: Slight or moderate",
+  96: "⛈️  Thunderstorm with slight hail", 99: "⛈️  Thunderstorm with heavy hail"
 };
 
 async function getCoordinates(city: string): Promise<GeoResult | null> {
@@ -58,24 +58,40 @@ async function getAutoLocation(): Promise<AutoGeoResult> {
 }
 
 async function getOpenMeteoWeather(lat: number, lon: number, date: string): Promise<WeatherData> {
+  // Determine if date is fast past (archive) or near future (forecast)
   const today = new Date();
   const targetDate = new Date(date);
   const diffTime = targetDate.getTime() - today.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   
+  // Future dates > 14 days might fail on standard forecast.
+  // Past dates < -1 days need archive.
+  // Standard forecast covers -1 to +16 days approximately.
+  
   let baseUrl = "https://api.open-meteo.com/v1/forecast";
-  
-  // Use archive for dates older than 2 days ago
-  const isArchive = diffDays < -2; 
-  
-  if (isArchive) {
+  let isArchive = false;
+
+  if (diffDays < -1) {
     baseUrl = "https://archive-api.open-meteo.com/v1/archive";
+    isArchive = true;
+  } else if (diffDays > 16) {
+    throw new Error("Cannot forecast more than 16 days in the future.");
   }
 
-  const url = `${baseUrl}?latitude=${lat}&longitude=${lon}&start_date=${date}&end_date=${date}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode&timezone=auto`;
+  let url = `${baseUrl}?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode&timezone=auto`;
+
+  if (isArchive) {
+    url += `&start_date=${date}&end_date=${date}`;
+  } else {
+    // Forecast API can also take start/end date to narrow down valid range
+    url += `&start_date=${date}&end_date=${date}`;
+  }
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch weather data: ${res.statusText}`);
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch weather data: ${res.statusText} - ${errorText}`);
+  }
   const data = await res.json();
   
   if (!data.daily || !data.daily.time || data.daily.time.length === 0) {
@@ -198,7 +214,11 @@ export async function showWeather(args: string[]) {
     console.log("");
 
   } catch (error) {
+    // Enhanced error logging for debugging
     const msg = error instanceof Error ? error.message : String(error);
     spinner.fail(chalk.red(`Error: ${msg}`));
+    if (msg.includes("Bad Request") || process.env.DEBUG) {
+       console.log(chalk.dim(`  Debug: Failed request to Open-Meteo.`));
+    }
   }
 }
