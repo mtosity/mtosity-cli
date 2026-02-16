@@ -38,6 +38,7 @@ export function showHelp() {
   console.log("");
 
   console.log(chalk.white.bold("  Utility"));
+  console.log(`    ${cmd("weather")} ${dim("[city] [--date YYYY-MM-DD]")}    Show weather (use --date for specific day)`);
   console.log(`    ${cmd("clock")} ${dim("[-p <city>]...")}              World clock (use -p to add cities)`);
   console.log("");
 

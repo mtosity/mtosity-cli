@@ -10,6 +10,7 @@ import { runWhisky } from "./commands/whisky";
 import { showResume } from "./commands/me";
 import { showClock, parsePlaces } from "./commands/clock";
 import { runGame } from "./commands/game";
+import { showWeather } from "./commands/weather";
 
 function prompt(rl: readline.Interface): Promise<string> {
   return new Promise((resolve) => {
@@ -109,6 +110,10 @@ export async function main() {
 
       case "game":
         await runGame(rl, args[0]);
+        break;
+
+      case "weather":
+        await showWeather(args);
         break;
 
       case "clear":
