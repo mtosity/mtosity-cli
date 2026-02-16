@@ -1,4 +1,3 @@
-import readline from "readline";
 import { enterGame, parseKey } from "../terminal";
 import { PIECES } from "./pieces";
 import {
@@ -13,6 +12,7 @@ import {
 } from "./board";
 import { pickWorstPiece } from "./bastard";
 import { renderBoard, TetrisState } from "./renderer";
+import { CommandContext } from "../../commands/registry";
 
 const LINE_SCORES = [0, 100, 300, 500, 800];
 const LINES_PER_LEVEL = 10;
@@ -21,8 +21,9 @@ function gravityMs(level: number): number {
   return Math.max(100, 800 - (level - 1) * 70);
 }
 
-export async function playTetris(rl: readline.Interface): Promise<void> {
-  const ctx = enterGame(rl);
+export async function playTetris(cmdContext: CommandContext): Promise<void> {
+  cmdContext.enterExclusiveMode();
+  const ctx = enterGame();
 
   return new Promise<void>((resolve) => {
     const board: Board = createBoard();
@@ -108,6 +109,7 @@ export async function playTetris(rl: readline.Interface): Promise<void> {
       stopGravity();
       process.stdin.removeListener("data", onKey);
       ctx.cleanup();
+      cmdContext.exitExclusiveMode();
       resolve();
     }
 

@@ -25,97 +25,99 @@ npx mtosity
 
 ## Commands
 
+Type `/` to see all commands with inline autocomplete. Use Tab or Enter to accept a suggestion, arrow keys to navigate. Each argument position shows either selectable options (e.g. `/game` → tetris, invaders) or placeholder hints (e.g. `/yt` → `<url>`).
+
 ### About
 
 | Command | Description |
 |---|---|
-| `me` | Animated terminal resume / about me |
+| `/me` | Animated terminal resume / about me |
 
 ### System
 
 | Command | Description |
 |---|---|
-| `system` | Display system info (OS, CPU, GPU, memory, IP addresses) |
+| `/system` | Display system info (OS, CPU, GPU, memory, IP addresses) |
 
 ### Apps
 
 | Command | Description |
 |---|---|
-| `spotify status` | Show current Spicetify config |
-| `spotify theme <name>` | Switch theme (mocha, macchiato, frappe, latte, dark, dracula, nord, gruvbox, rosepine, default) |
-| `spotify apply` | Apply Spicetify config |
-| `spotify restart` | Restart Spotify |
-| `spotify fix` | Backup & apply (fixes after Spotify updates) |
-| `spotify restore` | Restore original Spotify |
-| `whisky status` | Check Whisky installation |
-| `whisky run <file.exe>` | Run a Windows .exe via Whisky |
-| `whisky open` | Open Whisky.app GUI |
-| `whisky install` | Install Whisky via Homebrew |
+| `/spotify status` | Show current Spicetify config |
+| `/spotify theme <name>` | Switch theme (mocha, macchiato, frappe, latte, dark, dracula, nord, gruvbox, rosepine, default) |
+| `/spotify apply` | Apply Spicetify config |
+| `/spotify restart` | Restart Spotify |
+| `/spotify fix` | Backup & apply (fixes after Spotify updates) |
+| `/spotify restore` | Restore original Spotify |
+| `/whisky status` | Check Whisky installation |
+| `/whisky run <file.exe>` | Run a Windows .exe via Whisky |
+| `/whisky open` | Open Whisky.app GUI |
+| `/whisky install` | Install Whisky via Homebrew |
 
 ### Media
 
 | Command | Description |
 |---|---|
-| `yt <url> [start] [end]` | Download YouTube video (MP4) |
-| `yt-mp3 <url> [start] [end]` | Download YouTube audio (MP3) |
-| `harmonica <file> [preset]` | Enhance harmonica recording (presets: echo, echo-light, echo-heavy, bass) |
+| `/yt <url> [start] [end]` | Download YouTube video (MP4) |
+| `/yt-mp3 <url> [start] [end]` | Download YouTube audio (MP3) |
+| `/harmonica <file> [preset]` | Enhance harmonica recording (presets: echo, echo-light, echo-heavy, bass) |
 
 ### Games
 
 | Command | Description |
 |---|---|
-| `game` | List available games |
-| `game tetris` | Bastard Tetris — always gives you the worst piece |
-| `game invaders` | nInvaders — Space Invaders clone in the terminal |
+| `/game` | List available games |
+| `/game tetris` | Bastard Tetris — always gives you the worst piece |
+| `/game invaders` | nInvaders — Space Invaders clone in the terminal |
 
 ### Utility
 
 | Command | Description |
 |---|---|
-| `clock` | World clock showing times across cities |
-| `clock -p <city>` | Add specific cities to the clock (e.g. `clock -p berlin -p "san francisco"`) |
-| `weather [city]` | Show current weather (via wttr.in) |
-| `weather [city] -d [date]` | Show historical/future weather (via Open-Meteo). Date: `YYYY-MM-DD` or `MM-DD` |
+| `/clock` | World clock showing times across cities |
+| `/clock -p <city>` | Add specific cities to the clock (e.g. `/clock -p berlin -p "san francisco"`) |
+| `/weather [city]` | Show current weather (via wttr.in) |
+| `/weather [city] -d [date]` | Show historical/future weather (via Open-Meteo). Date: `YYYY-MM-DD` or `MM-DD` |
 
 ### General
 
 | Command | Description |
 |---|---|
-| `help` | Show available commands |
-| `clear` | Clear the terminal |
-| `exit` | Exit the CLI |
+| `/help` | Show available commands |
+| `/clear` | Clear the terminal |
+| `/exit` | Exit the CLI |
 
-> **Tip**: Press ↑/↓ arrows to navigate command history.
+> **Tip**: Type `/` to see autocomplete suggestions. Use ↑/↓ arrows to navigate suggestions or command history. Press Tab to accept a suggestion. Placeholder hints (e.g. `<file>`, `<url>`) appear as you type but are non-interactive — just keep typing to fill in the value.
 
 ## Examples
 
 ```bash
 # System info
-system
+/system
 
 # Switch Spotify theme
-spotify theme mocha
+/spotify theme mocha
 
 # Download a video
-yt https://youtu.be/dQw4w9WgXcQ
+/yt https://youtu.be/dQw4w9WgXcQ
 
 # Download and trim audio (start at 0:30, duration 1:00)
-yt-mp3 https://youtu.be/dQw4w9WgXcQ 00:00:30 00:01:00
+/yt-mp3 https://youtu.be/dQw4w9WgXcQ 00:00:30 00:01:00
 
 # Run a Windows exe
-whisky run ~/Downloads/setup.exe
+/whisky run ~/Downloads/setup.exe
 
 # Enhance a harmonica recording with heavy echo
-harmonica recording.mp4 echo-heavy
+/harmonica recording.mp4 echo-heavy
 
 # Check weather (auto-locate)
-weather
+/weather
 
 # Check weather history (London, Y2K)
-weather London -d 2000-01-01
+/weather London -d 2000-01-01
 
 # Check forecast (Tokyo, Christmas)
-weather Tokyo -d 12-25
+/weather Tokyo -d 12-25
 ```
 
 ## Project Structure
@@ -125,7 +127,8 @@ src/
 ├── index.ts              Entry point
 ├── cli.ts                REPL loop & command dispatch
 ├── commands/
-│   ├── help.ts           Help display
+│   ├── help.ts           Help display (registry-driven)
+│   ├── registry.ts       Command registry & definitions
 │   ├── system.ts         System info (neofetch-style)
 │   ├── spicetify.ts      Spotify/Spicetify management
 │   ├── whisky.ts         Windows app runner via Whisky
@@ -134,8 +137,12 @@ src/
 │   ├── clock.ts          World clock display
 │   ├── weather.ts        Weather (wttr.in & Open-Meteo)
 │   └── game.ts           Game launcher (tetris, invaders)
+├── ui/
+│   ├── renderer.ts       Terminal renderer (ANSI, scroll regions)
+│   ├── input.ts          Raw stdin input handler
+│   └── suggestions.ts    Autocomplete suggestion engine
 ├── games/
-│   ├── terminal.ts       Shared game infrastructure (raw mode, keys, ANSI)
+│   ├── terminal.ts       Shared game infrastructure (keys, ANSI)
 │   ├── tetris/
 │   │   ├── index.ts      Tetris game loop & state machine
 │   │   ├── pieces.ts     Tetromino definitions & rotations
