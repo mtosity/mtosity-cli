@@ -1,5 +1,3 @@
-import readline from "readline";
-
 export interface GameKey {
   name: string;
   ctrl: boolean;
@@ -41,28 +39,19 @@ export function clearLine(row: number) {
 }
 
 export interface GameContext {
-  rl: readline.Interface;
   cleanup: () => void;
 }
 
-export function enterGame(rl: readline.Interface): GameContext {
-  rl.pause();
-  if (process.stdin.isTTY) {
-    process.stdin.setRawMode(true);
-  }
-  process.stdin.resume();
+export function enterGame(): GameContext {
+  // Raw mode is already active from the CLI's raw stdin.
+  // We just need to set up the game screen.
   hideCursor();
   clearScreen();
 
   const cleanup = () => {
     showCursor();
     clearScreen();
-    if (process.stdin.isTTY) {
-      process.stdin.setRawMode(false);
-    }
-    process.stdin.pause();
-    rl.resume();
   };
 
-  return { rl, cleanup };
+  return { cleanup };
 }

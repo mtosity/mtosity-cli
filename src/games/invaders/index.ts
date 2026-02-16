@@ -1,4 +1,3 @@
-import readline from "readline";
 import { enterGame, parseKey } from "../terminal";
 import {
   InvaderState,
@@ -12,14 +11,16 @@ import {
 } from "./entities";
 import { createWave, getAliveCount, speedForAlive } from "./wave";
 import { renderInvaders } from "./renderer";
+import { CommandContext } from "../../commands/registry";
 
 const PLAYER_SPEED = 3;
 const BULLET_SPEED = 2;
 const ENEMY_SHOOT_CHANCE = 0.03;
 const TICK_MS = 33; // ~30fps
 
-export async function playInvaders(rl: readline.Interface): Promise<void> {
-  const ctx = enterGame(rl);
+export async function playInvaders(cmdContext: CommandContext): Promise<void> {
+  cmdContext.enterExclusiveMode();
+  const ctx = enterGame();
 
   return new Promise<void>((resolve) => {
     const { invaders, moveDelay } = createWave(1);
@@ -51,6 +52,7 @@ export async function playInvaders(rl: readline.Interface): Promise<void> {
       if (tickTimer) clearInterval(tickTimer);
       process.stdin.removeListener("data", onKeyDown);
       ctx.cleanup();
+      cmdContext.exitExclusiveMode();
       resolve();
     }
 

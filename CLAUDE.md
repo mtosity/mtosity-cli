@@ -15,19 +15,33 @@ CI runs on every PR via GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Architecture
 
-Modular CLI tool with a REPL shell. Entry point is `src/index.ts` → `src/cli.ts` (readline-based REPL with command history). Commands are in `src/commands/`, utilities in `src/utils/`.
+Modular CLI tool with a raw-mode REPL shell. Entry point is `src/index.ts` → `src/cli.ts` (raw stdin REPL with slash commands and inline autocomplete). Commands are registered via `src/commands/registry.ts`, UI rendering via `src/ui/`.
+
+**Argument completions:** Commands declare positional `args: ArgDefinition[]`. Each position is either a selectable dropdown (`options` array) or a non-interactive placeholder hint (no `options`). The suggestion engine (`src/ui/suggestions.ts`) resolves the current argument position and returns the appropriate suggestions. Hints are dim, wrapped in `<angle brackets>`, and cannot be selected.
 
 ```
 src/
 ├── index.ts              Entry point
 ├── cli.ts                REPL loop & command dispatch
 ├── commands/
-│   ├── help.ts           Help display
+│   ├── registry.ts       Command registry & definitions
+│   ├── help.ts           Help display (registry-driven)
 │   ├── system.ts         System info (neofetch-style)
 │   ├── spicetify.ts      Spotify/Spicetify management
 │   ├── whisky.ts         Windows app runner via Whisky
 │   ├── youtube.ts        YouTube downloader
-│   └── harmonica.ts      Audio enhancement
+│   ├── harmonica.ts      Audio enhancement
+│   ├── clock.ts          World clock display
+│   ├── weather.ts        Weather (wttr.in & Open-Meteo)
+│   └── game.ts           Game launcher (tetris, invaders)
+├── ui/
+│   ├── renderer.ts       Terminal renderer (ANSI, scroll regions)
+│   ├── input.ts          Raw stdin input handler
+│   └── suggestions.ts    Autocomplete suggestion engine
+├── games/
+│   ├── terminal.ts       Shared game infrastructure (keys, ANSI)
+│   ├── tetris/           Bastard Tetris
+│   └── invaders/         Space Invaders clone
 └── utils/
     ├── ffmpeg.ts          FFmpeg & yt-dlp setup
     └── network.ts         IP address utilities
@@ -43,7 +57,7 @@ src/
 
 ## Rules
 
-- **When adding, removing, or modifying any command:** Always update both `src/commands/help.ts` and `README.md` to reflect the change. Keep help text and README command tables in sync.
-- **No interactive menus:** Do not use `inquirer` prompts. Commands should show usage text when called without required arguments. The REPL uses `readline` for input with arrow-key history support.
-- **New commands** go in `src/commands/<name>.ts` and get wired into `src/cli.ts` switch statement.
+- **When adding, removing, or modifying any command:** Register it in `src/cli.ts`'s `registerAllCommands()` and update `README.md`. Help is auto-generated from the registry.
+- **No interactive menus:** Do not use `inquirer` prompts. Commands should show usage text when called without required arguments. The REPL uses raw stdin with slash-command autocomplete.
+- **New commands** go in `src/commands/<name>.ts` and get registered in `src/cli.ts`'s `registerAllCommands()` function via the `CommandRegistry`.
 - **Sound effects must support macOS, Windows, and Linux.** Use `afplay` on macOS, PowerShell `SystemSounds`/Media on Windows, and `paplay`/`aplay` (freedesktop sounds) on Linux. Fail silently if unavailable.

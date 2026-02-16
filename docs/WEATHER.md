@@ -19,10 +19,11 @@ weather [city] [-d <date>]
 
 ### 2. Date Mode (History & Forecast)
 *   **Provider:** [Open-Meteo](https://open-meteo.com)
-*   **Style:** Clean, data-focused list (Temp, Wind, Precip).
+*   **Style:** Clean data list with **weather icons** (☀️, 🌧️, ❄️) for conditions.
 *   **Usage:**
     *   `weather -d 2025-12-25` (Auto-detects location, specific date)
     *   `weather Tokyo -d 01-01` (Specific city, specific date)
+*   **Limits:** Forecasts are available for up to **16 days** in the future.
 
 ## Date Formats
 The `-d` or `--date` flag accepts:
@@ -47,4 +48,5 @@ weather Berlin -d 2000-01-01
 
 ## Troubleshooting
 *   **Location not found**: Ensure the city name is spelled correctly. New/obscure locations might need a country code (e.g., "Paris, FR").
+*   **Forecast too far**: Open-Meteo supports forecasts up to 16 days ahead. Dates beyond that will show an error.
 *   **Network errors**: Both modes require an active internet connection.

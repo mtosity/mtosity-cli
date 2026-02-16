@@ -1,51 +1,52 @@
 import chalk from "chalk";
+import { CommandRegistry } from "./registry";
 
-export function showHelp() {
+// Extra details shown below certain commands (keyed by command name)
+const EXTRA_DETAILS: Record<string, string[]> = {
+  spotify: ["actions: status, theme <name>, apply, restart, fix, restore"],
+  whisky: ["actions: status, run <file.exe>, open, install"],
+  harmonica: ["presets: echo (default), echo-light, echo-heavy, bass"],
+  game: ["games: tetris (Bastard Tetris), invaders (Space Invaders)"],
+  weather: ["date format: YYYY-MM-DD or MM-DD (current year)"],
+  clock: ["use -p to add cities"],
+};
+
+export function showHelp(registry?: CommandRegistry): void {
   const dim = chalk.dim;
   const cmd = chalk.cyan.bold;
-  const arg = chalk.yellow;
 
   console.log("");
   console.log(chalk.green.bold("  MTosity CLI"));
   console.log(dim("  " + "─".repeat(50)));
   console.log("");
 
-  console.log(chalk.white.bold("  About"));
-  console.log(`    ${cmd("me")}                          Animated resume / about me`);
-  console.log("");
+  if (!registry) {
+    // Fallback for tests or standalone usage
+    console.log(`    Type ${cmd("/help")} for commands`);
+    console.log("");
+    return;
+  }
 
-  console.log(chalk.white.bold("  System"));
-  console.log(`    ${cmd("system")}                      Show system info`);
-  console.log("");
+  const groups = registry.getByCategory();
 
-  console.log(chalk.white.bold("  Apps"));
-  console.log(`    ${cmd("spotify")} ${arg("<action>")}             Manage Spicetify`);
-  console.log(dim("      actions: status, theme <name>, apply, restart, fix, restore"));
-  console.log(`    ${cmd("whisky")} ${arg("<action>")}              Run Windows apps via Whisky`);
-  console.log(dim("      actions: status, run <file.exe>, open, install"));
-  console.log("");
+  for (const group of groups) {
+    console.log(chalk.white.bold(`  ${group.label}`));
 
-  console.log(chalk.white.bold("  Media"));
-  console.log(`    ${cmd("yt")} ${arg("<url>")} ${dim("[start] [end]")}        Download YouTube video`);
-  console.log(`    ${cmd("yt-mp3")} ${arg("<url>")} ${dim("[start] [end]")}    Download YouTube audio`);
-  console.log(`    ${cmd("harmonica")} ${arg("<file>")} ${dim("[preset]")}     Enhance harmonica recording`);
-  console.log(dim("      presets: echo (default), echo-light, echo-heavy, bass"));
-  console.log("");
+    for (const c of group.commands) {
+      const name = `/${c.name}`;
+      const usage = c.usage ? c.usage.slice(c.usage.indexOf(" ") + 1) : "";
+      const usageStr = usage ? ` ${chalk.yellow(usage.split(" ")[0])}${dim(" " + usage.split(" ").slice(1).join(" "))}` : "";
+      const padding = Math.max(1, 28 - name.length - (usage ? usage.length + 1 : 0));
 
-  console.log(chalk.white.bold("  Games"));
-  console.log(`    ${cmd("game")} ${arg("<name>")}                 Play a terminal game`);
-  console.log(dim("      games: tetris (Bastard Tetris), invaders (Space Invaders)"));
-  console.log("");
+      console.log(`    ${cmd(name)}${usageStr}${" ".repeat(padding)}${c.description}`);
 
-  console.log(chalk.white.bold("  Utility"));
-  console.log(`    ${cmd("weather")} ${dim("[city] [-d date]")}             Show weather (current, history, or forecast)`);
-  console.log(dim("      date format: YYYY-MM-DD or MM-DD (current year)"));
-  console.log(`    ${cmd("clock")} ${dim("[-p <city>]...")}              World clock (use -p to add cities)`);
-  console.log("");
-
-  console.log(chalk.white.bold("  General"));
-  console.log(`    ${cmd("help")}                        Show this help`);
-  console.log(`    ${cmd("clear")}                       Clear the screen`);
-  console.log(`    ${cmd("exit")}                        Quit the CLI`);
-  console.log("");
+      const details = EXTRA_DETAILS[c.name];
+      if (details) {
+        for (const d of details) {
+          console.log(dim(`      ${d}`));
+        }
+      }
+    }
+    console.log("");
+  }
 }
