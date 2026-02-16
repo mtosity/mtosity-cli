@@ -43,6 +43,11 @@ function restoreCursor() {
   write("\x1B8");
 }
 
+// ── Constants ───────────────────────────────────────────────────────
+
+// Input area: top border + prompt line + bottom border + margin
+const INPUT_AREA_ROWS = 4;
+
 // ── Suggestion item ──────────────────────────────────────────────────
 
 export interface SuggestionItem {
@@ -67,17 +72,20 @@ export class Renderer {
       if (this.exclusive) return;
 
       const oldRows = this.rows;
+      const oldCols = this.cols;
       const oldSuggestionCount = this.suggestionCount;
 
       // Temporarily reset scroll region so we can clear anywhere
       resetScrollRegion();
 
-      // Clear the old input row (at old bottom)
-      clearLineAt(oldRows);
+      // Clear the old input area (3 rows at the bottom)
+      for (let i = 0; i < INPUT_AREA_ROWS; i++) {
+        clearLineAt(oldRows - i);
+      }
 
       // Clear old suggestion rows
       if (oldSuggestionCount > 0) {
-        const oldStart = oldRows - oldSuggestionCount;
+        const oldStart = oldRows - INPUT_AREA_ROWS + 1 - oldSuggestionCount;
         for (let i = 0; i < oldSuggestionCount; i++) {
           clearLineAt(oldStart + i);
         }
@@ -109,27 +117,53 @@ export class Renderer {
     return this.cols;
   }
 
+  // Row positions for the 3-row input area
+  private get topBorderRow(): number {
+    return this.rows - 3;
+  }
+
+  private get inputRow(): number {
+    return this.rows - 2;
+  }
+
+  private get bottomBorderRow(): number {
+    return this.rows - 1;
+  }
+
+  private drawBorder(row: number): void {
+    clearLineAt(row);
+    write(chalk.dim("─".repeat(this.cols)));
+  }
+
   // Set scroll region so output stays above input area
   setupScrollRegion(): void {
-    const outputBottom = this.rows - 1 - this.suggestionCount;
+    const outputBottom = this.topBorderRow - 1 - this.suggestionCount;
     setScrollRegion(1, Math.max(1, outputBottom));
   }
 
-  // Draw the prompt + current input on the bottom row
+  // Draw the bordered input area
   drawInput(buffer: string, cursorPos: number): void {
     const prompt = chalk.green("❯ ");
     const promptLen = 2; // "❯ " is 2 visible chars
 
-    // Save cursor position in the scroll region, draw input, restore
     saveCursor();
-    clearLineAt(this.rows);
+
+    // Top border
+    this.drawBorder(this.topBorderRow);
+
+    // Input line
+    clearLineAt(this.inputRow);
     write(prompt + buffer);
-    // Position cursor correctly within the input
-    moveTo(this.rows, promptLen + cursorPos + 1);
+
+    // Bottom border
+    this.drawBorder(this.bottomBorderRow);
+
+    // Position cursor on the input line
+    moveTo(this.inputRow, promptLen + cursorPos + 1);
     showCursor();
   }
 
-  // Draw suggestion dropdown above the input line
+  // Draw suggestion dropdown above the input area
   drawSuggestions(suggestions: SuggestionItem[], selectedIndex: number): void {
     hideCursor();
 
@@ -138,7 +172,7 @@ export class Renderer {
     const newCount = suggestions.length;
 
     if (oldCount > 0) {
-      const oldStart = this.rows - oldCount;
+      const oldStart = this.topBorderRow - oldCount;
       for (let i = 0; i < oldCount; i++) {
         clearLineAt(oldStart + i);
       }
@@ -151,10 +185,10 @@ export class Renderer {
       return;
     }
 
-    // Adjust scroll region to make room for suggestions + input
+    // Adjust scroll region to make room for suggestions + input area
     this.setupScrollRegion();
 
-    const startRow = this.rows - newCount;
+    const startRow = this.topBorderRow - newCount;
 
     for (let i = 0; i < newCount; i++) {
       const row = startRow + i;
@@ -189,7 +223,7 @@ export class Renderer {
   clearSuggestions(): void {
     if (this.suggestionCount === 0) return;
 
-    const startRow = this.rows - this.suggestionCount;
+    const startRow = this.topBorderRow - this.suggestionCount;
     for (let i = 0; i < this.suggestionCount; i++) {
       clearLineAt(startRow + i);
     }
@@ -203,13 +237,15 @@ export class Renderer {
   prepareForCommand(): void {
     this.clearSuggestions();
     hideCursor();
-    // Clear the input line
+    // Clear the input area (4 rows including margin)
+    clearLineAt(this.topBorderRow);
+    clearLineAt(this.inputRow);
+    clearLineAt(this.bottomBorderRow);
     clearLineAt(this.rows);
     // Reset scroll region so commands can use full output area
     resetScrollRegion();
     // Move cursor to the bottom so new output appears there
-    const outputBottom = this.rows;
-    moveTo(outputBottom, 1);
+    moveTo(this.rows, 1);
   }
 
   // Restore our UI after a command finishes
