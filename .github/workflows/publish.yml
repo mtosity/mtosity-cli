@@ -46,6 +46,6 @@ jobs:
       - run: |
           npm pkg set name="@mtosity/mtosity"
           npm pkg set version="${GITHUB_REF_NAME#v}"
-          npm publish
+          npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
